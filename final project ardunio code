@@ -1,0 +1,76 @@
+const int button1Pin = 2;
+const int button2Pin = 3;
+const int resetButtonPin = 4;
+
+const int arcadeLed1Pin = 5;
+const int arcadeLed2Pin = 6;
+const int arcadeLed3Pin = 7;
+
+int step = 0;
+bool choiceMade = false;
+unsigned long lastChoiceTime = 0; // Track the time of the last choice
+const unsigned long debounceTime = 300; // min time between choices in milliseconds
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(button1Pin, INPUT_PULLUP);
+  pinMode(button2Pin, INPUT_PULLUP);
+  pinMode(resetButtonPin, INPUT_PULLUP);
+  pinMode(arcadeLed1Pin, OUTPUT);
+  pinMode(arcadeLed2Pin, OUTPUT);
+  pinMode(arcadeLed3Pin, OUTPUT);
+  resetGame();
+}
+
+void loop() {
+  unsigned long currentTime = millis();
+
+  if (digitalRead(button1Pin) == LOW && !choiceMade && (currentTime - lastChoiceTime > debounceTime)) {
+    digitalWrite(arcadeLed1Pin, HIGH);
+    delay(200); // Debounce delay for physical button press
+    Serial.println("1");
+    handleChoice(1);
+    lastChoiceTime = currentTime; // Update the last choice time
+  } else {
+    digitalWrite(arcadeLed1Pin, LOW);
+  }
+
+  if (digitalRead(button2Pin) == LOW && !choiceMade && (currentTime - lastChoiceTime > debounceTime)) {
+    digitalWrite(arcadeLed2Pin, HIGH);
+    delay(200); // Debounce delay for physical button press
+    Serial.println("2");
+    handleChoice(2);
+    lastChoiceTime = currentTime; // update the last choice time
+  } else {
+    digitalWrite(arcadeLed2Pin, LOW);
+  }
+
+  if (digitalRead(resetButtonPin) == LOW) {
+    digitalWrite(arcadeLed3Pin, HIGH); // Light up reset LED
+    delay(200);
+    Serial.println("reset");
+    resetGame();
+  } else {
+    digitalWrite(arcadeLed3Pin, LOW); // Turn off reset LED when not pressed
+  }
+}
+
+void handleChoice(int choice) {
+  choiceMade = true;
+  step++; // Increment the game step
+  if (step >= 3) { // all steps completed
+    delay(3000);
+    resetGame();
+  }
+  choiceMade = false;
+}
+
+void resetGame() {
+  step = 0;
+  choiceMade = false;
+
+  digitalWrite(arcadeLed1Pin, LOW);
+  digitalWrite(arcadeLed2Pin, LOW);
+  digitalWrite(arcadeLed3Pin, LOW);
+}
+
