@@ -1,0 +1,193 @@
+// /////// Global Variables ///////
+let lastKeyPressTime = 0; // Tracks the last key press time for debouncing
+let bgMusic; 
+let currentStep = 0; // Tracks the current step within a course
+let canvasState = "start"; 
+let currentCourse = ""; // Stores the selected course 
+let currentGIF = null; 
+let choices = []; 
+let gifStartTime = 0; 
+
+
+let assets = {
+  startScreen: "start.gif",
+  menuGIF: "menu.gif", 
+  starter: {
+    prompts: { base: "s_1.gif", veggies: "s_2.gif", dressing: "s_3.gif" }, // Prompt for "starter"
+    base: { 1: "s_lettuce.gif", 2: "s_kale.gif" }, // for base options
+    veggies: { 1: "s_cucumber.gif", 2: "s_pepper.gif" }, // for veggie options
+    dressing: { 1: "s_oil.gif", 2: "s_ranch.gif" }, // for dressing options
+    finalGIFs: { },
+  },// Similar structure as starter //
+  main: {  },
+  dessert: {  },
+};
+
+// /////// Preload  ///////
+
+function preload() {
+  bgMusic = loadSound("a_background.mp3"); 
+  // Loop through assets to preload and hide all GIFs
+  for (let course in assets) {
+    if (course === "startScreen" || course === "menuGIF") {
+      // Create and hide start and menu GIFs
+      assets[course] = createImg(assets[course], `${course} GIF`);
+      assets[course].hide();
+    } else {
+      // Nested loop for course-specific assets
+      for (let category in assets[course]) {
+        for (let item in assets[course][category]) {
+          let gifPath = assets[course][category][item];
+          assets[course][category][item] = createImg(gifPath, "GIF");
+          assets[course][category][item].hide(); // Ensure all GIFs are hidden initially
+        }
+      }
+    }
+  }
+}
+
+// /////// Setup  ///////
+
+function setup() {
+  createCanvas(windowWidth, windowHeight); 
+  bgMusic.loop(); 
+  bgMusic.setVolume(1); 
+}
+
+// /////// Draw Function ///////
+
+function draw() {
+  background(255); 
+  text("Press Space Bar to select Serial Port", 20, 30); // serial communication port
+
+  // Switch between different canvas states
+  switch (canvasState) {
+    case "start":
+      displayStartScreen(); 
+      break;
+    case "menu":
+      displayMenu(); 
+      break;
+    case "starter":
+    case "main":
+    case "dessert":
+      displayPrompt(); 
+      break;
+    case "video":
+      playCurrentGIF(); 
+      break;
+    case "finalDish":
+      displayFinalDish(); 
+      break;
+  }
+}
+
+// /////// users input ///////
+
+function keyPressed() {
+  if (key === " ") setUpSerial(); //  serial setup
+  if (key === "f") toggleFullscreen(); //  fullscreen mode
+  if (key === "1" || key === "2" || key === "3") {
+    if (canvasState === "menu") {
+      // Switch the canvas state and current course based on key press
+      if (key === "1") {
+        currentCourse = "starter";
+        canvasState = "starter";
+      } else if (key === "2") {
+        currentCourse = "main";
+        canvasState = "main";
+      } else if (key === "3") {
+        currentCourse = "dessert";
+        canvasState = "dessert";
+      }
+    }
+  }
+}
+
+function toggleFullscreen() {
+  fullscreen(!fullscreen()); 
+}
+
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight); 
+  // Resizeing 
+  for (let course in assets) {
+    if (course === "startScreen" || course === "menuGIF") {
+      assets[course].size(windowWidth, windowHeight); 
+      
+    } else {
+      for (let category in assets[course]) {
+        for (let item in assets[course][category]) {
+          assets[course][category][item].size(windowWidth, windowHeight);
+        }
+      }
+    }
+  }
+}
+
+// /////// Display Functions ///////
+
+// space bar is pressed
+function displayStartScreen() {
+  assets.startScreen.show(); // Display the start screen GIF
+  assets.startScreen.position(0, 0);
+  assets.startScreen.size(width, height);
+
+  if (keyIsPressed && key === " " && isDebouncedKeyPress()) {
+    canvasState = "menu"; // Transition to the menu state
+    assets.startScreen.hide(); // Hide the start screen GIF
+  }
+}
+
+//  transitions to a course when a key is pressed
+function displayMenu() {
+  assets.menuGIF.show(); // Show the menu GIF
+  assets.menuGIF.position(0, 0);
+  assets.menuGIF.size(width, height);
+
+  if (keyIsPressed && isDebouncedKeyPress()) {
+    if (key === "1") {
+      currentCourse = "starter"; // if selects "starter"
+      canvasState = "starter";
+    } else if (key === "2") {
+      currentCourse = "main"; // if selects "main"
+      canvasState = "main";
+    } else if (key === "3") {
+      currentCourse = "dessert"; //  if selects "dessert"
+      canvasState = "dessert";
+    }
+    assets.menuGIF.hide(); // Hide the menu GIF
+  }
+}
+
+// Displays prompts based on the current step in the course
+function displayPrompt() {
+  let categories = ["base", "veggies", "dressing"]; 
+  if (currentCourse === "main") categories = ["base", "protein", "veggies"];
+  if (currentCourse === "dessert") categories = ["base", "fruit", "garnish"]; 
+
+  let category = categories[currentStep]; // Get the category for the current step
+
+  if (!assets[currentCourse]?.prompts || !assets[currentCourse].prompts[category]) {
+    console.error("Invalid currentCourse or category:", currentCourse, category); // Log error for invalid states
+    return;
+  }
+// display of prompt GIFs
+  let promptGif = assets[currentCourse].prompts[category];
+  promptGif.show(); 
+  promptGif.position(0, 0);
+  promptGif.size(width, height);
+}
+
+
+
+// Checks if a key press is debounced to avoid repeated actions
+function isDebouncedKeyPress(delay = 300) {
+  let currentTime = millis();
+  if (currentTime - lastKeyPressTime > delay) {
+    lastKeyPressTime = currentTime;
+    return true;
+  }
+  return false;
+}
